@@ -3,7 +3,6 @@ import { SettingsModal } from './components/SettingsModal';
 import { EmailManagerModal } from './components/EmailManagerModal';
 import { DaySection } from './components/DaySection';
 import { 
-  formatDate, 
   formatNumericDate,
   getPreviousWorkingDay, 
   formatTime, 
