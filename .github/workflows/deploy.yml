@@ -19,8 +19,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies with Retry
+        run: |
+          for i in 1 2 3; do
+            npm install && break || sleep 15;
+          done
 
       - name: Build
         run: npm run build
