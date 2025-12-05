@@ -20,6 +20,13 @@ export const formatDate = (date: Date): string => {
   });
 };
 
+export const formatNumericDate = (date: Date): string => {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
+
 export const formatTime = (hour: number, minute: number, period: string): string => {
   return `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
 };
@@ -36,3 +43,14 @@ export const parseISODate = (dateString: string): Date => {
   const [year, month, day] = dateString.split('-').map(Number);
   return new Date(year, month - 1, day);
 };
+
+export const getDaysInMonth = (year: number, month: number): number => {
+  // Month is 0-indexed (0 = Jan, 1 = Feb, etc.)
+  // Providing day 0 of the next month gives the last day of the current month
+  return new Date(year, month + 1, 0).getDate();
+};
+
+export const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];

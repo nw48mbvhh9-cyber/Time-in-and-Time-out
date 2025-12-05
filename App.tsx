@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { SettingsModal } from './components/SettingsModal';
+import { EmailManagerModal } from './components/EmailManagerModal';
 import { DaySection } from './components/DaySection';
 import { 
   formatDate, 
+  formatNumericDate,
   getPreviousWorkingDay, 
   formatTime, 
   parseISODate,
   isWeekend
 } from './utils';
 import { TimeState, LocationType } from './types';
-import { Send, Settings } from 'lucide-react';
+import { Send, Settings, Users } from 'lucide-react';
 
-const STORAGE_KEY_IN = 'attendance_default_in';
-const STORAGE_KEY_OUT = 'attendance_default_out';
+const STORAGE_KEY_IN = 'attendance_default_in_v3';
+const STORAGE_KEY_OUT = 'attendance_default_out_v3';
+const STORAGE_KEY_TO_EMAILS = 'attendance_to_emails';
+const STORAGE_KEY_CC_EMAILS = 'attendance_cc_emails';
 
-// Default Defaults (UAE Standard Time approximation provided by user)
+// Default Defaults (UAE Standard Time)
 const DEFAULT_IN_FALLBACK: TimeState = { hour: 8, minute: 30, period: 'AM' };
 const DEFAULT_OUT_FALLBACK: TimeState = { hour: 6, minute: 30, period: 'PM' };
 
@@ -27,24 +31,38 @@ const loadSavedTime = (key: string, fallback: TimeState): TimeState => {
   }
 };
 
+const loadSavedEmails = (key: string): string[] => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 const App: React.FC = () => {
   // --- Global Settings State ---
   const [showSettings, setShowSettings] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  
+  // Load defaults from storage or fallback
   const [defaultTimeIn, setDefaultTimeIn] = useState<TimeState>(() => loadSavedTime(STORAGE_KEY_IN, DEFAULT_IN_FALLBACK));
   const [defaultTimeOut, setDefaultTimeOut] = useState<TimeState>(() => loadSavedTime(STORAGE_KEY_OUT, DEFAULT_OUT_FALLBACK));
 
-  // --- State for Today (Time In) ---
+  // Email Lists
+  const [toEmails, setToEmails] = useState<string[]>(() => loadSavedEmails(STORAGE_KEY_TO_EMAILS));
+  const [ccEmails, setCcEmails] = useState<string[]>(() => loadSavedEmails(STORAGE_KEY_CC_EMAILS));
+
+  // --- State for Current Session (Time In) ---
   const [todayDate, setTodayDate] = useState<Date>(new Date());
   const [todayLocation, setTodayLocation] = useState<LocationType>('Office');
   const [todayClientName, setTodayClientName] = useState<string>('');
-  // Initialize with the loaded default
   const [todayTime, setTodayTime] = useState<TimeState>(defaultTimeIn);
 
-  // --- State for Yesterday (Time Out) ---
+  // --- State for Last Session (Time Out) ---
   const [yesterdayDate, setYesterdayDate] = useState<Date>(getPreviousWorkingDay(new Date()));
   const [yesterdayLocation, setYesterdayLocation] = useState<LocationType>('Office');
   const [yesterdayClientName, setYesterdayClientName] = useState<string>('');
-  // Initialize with the loaded default
   const [yesterdayTime, setYesterdayTime] = useState<TimeState>(defaultTimeOut);
 
   // Auto-update yesterday when today changes
@@ -53,6 +71,15 @@ const App: React.FC = () => {
     setYesterdayDate(newPrevDay);
   }, [todayDate]);
 
+  // Persist Email Lists
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_TO_EMAILS, JSON.stringify(toEmails));
+  }, [toEmails]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_CC_EMAILS, JSON.stringify(ccEmails));
+  }, [ccEmails]);
+
   // Handler for Saving Settings
   const handleSaveSettings = (newIn: TimeState, newOut: TimeState) => {
     setDefaultTimeIn(newIn);
@@ -60,22 +87,18 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_IN, JSON.stringify(newIn));
     localStorage.setItem(STORAGE_KEY_OUT, JSON.stringify(newOut));
     
-    // Optional: Update current view to match new defaults immediately for better UX
+    // Update current view to match new defaults immediately
     setTodayTime(newIn);
     setYesterdayTime(newOut);
   };
 
-  // Handlers
+  // Handlers for Native Date Input
   const handleTodayDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      setTodayDate(parseISODate(e.target.value));
-    }
+    if (e.target.value) setTodayDate(parseISODate(e.target.value));
   };
 
   const handleYesterdayDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      setYesterdayDate(parseISODate(e.target.value));
-    }
+    if (e.target.value) setYesterdayDate(parseISODate(e.target.value));
   };
 
   const formatLocationString = (location: LocationType, clientName: string) => {
@@ -88,30 +111,57 @@ const App: React.FC = () => {
   const handleSendEmail = () => {
     // Validation
     if (todayLocation === 'Client' && !todayClientName.trim()) {
-      alert("Please enter the Client Name for Today.");
+      alert("Please enter the Client Name for Current Session.");
       return;
     }
     if (yesterdayLocation === 'Client' && !yesterdayClientName.trim()) {
-      alert("Please enter the Client Name for Yesterday.");
+      alert("Please enter the Client Name for Last Session.");
       return;
     }
 
-    const subject = `Attendance - ${formatDate(todayDate)}`;
+    if (toEmails.length === 0) {
+        if(!confirm("You haven't configured any 'To' recipients. Do you want to continue with a blank recipient?")) {
+            setShowEmailModal(true);
+            return;
+        }
+    }
+
+    // Use Numeric Date for subject and body as requested
+    const subject = `Daily Attendance - ${formatNumericDate(todayDate)}`;
     
     // Constructing the body
     const todayLocStr = formatLocationString(todayLocation, todayClientName);
     const yesterdayLocStr = formatLocationString(yesterdayLocation, yesterdayClientName);
 
     const body = 
-`Date: ${formatDate(todayDate)}
+`Hi Team,
+
+I hope you are doing well.
+
+Please find the office or client office check in and check out timings
+
+Current working day :-
+Date: ${formatNumericDate(todayDate)}
 Time In: ${formatTime(todayTime.hour, todayTime.minute, todayTime.period)} (${todayLocStr})
 
-Date: ${formatDate(yesterdayDate)}
+Last working day:-
+Date: ${formatNumericDate(yesterdayDate)}
 Time Out: ${formatTime(yesterdayTime.hour, yesterdayTime.minute, yesterdayTime.period)} (${yesterdayLocStr})
-`;
+
+Let me know if you need any further information`;
+
+    // Construct mailto link
+    const to = toEmails.join(',');
+    const cc = ccEmails.join(',');
+    
+    // Note: mailto supports multiple emails comma-separated
+    let mailtoLink = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (cc) {
+        mailtoLink += `&cc=${cc}`;
+    }
 
     // Try to open mailto
-    window.location.href = `mailto:hr@example.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
   };
 
   return (
@@ -122,20 +172,31 @@ Time Out: ${formatTime(yesterdayTime.hour, yesterdayTime.minute, yesterdayTime.p
         <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
           Attendance
         </h1>
-        <button 
-          onClick={() => setShowSettings(true)}
-          className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-all"
-        >
-          <Settings size={22} />
-        </button>
+        
+        <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowEmailModal(true)}
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+              title="Manage Recipients"
+            >
+              <Users size={22} />
+            </button>
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-full transition-all"
+              title="Settings"
+            >
+              <Settings size={22} />
+            </button>
+        </div>
       </nav>
 
       {/* Main Content */}
       <main className="flex-1 p-4 pb-32 space-y-6">
         
-        {/* Section 1: Today (Time In) */}
+        {/* Section 1: Current Session */}
         <DaySection
-          title="Today"
+          title="Current Session"
           subtitle="Start of the day"
           date={todayDate}
           onDateChange={handleTodayDateChange}
@@ -149,9 +210,9 @@ Time Out: ${formatTime(yesterdayTime.hour, yesterdayTime.minute, yesterdayTime.p
           iconColor="bg-indigo-500"
         />
 
-        {/* Section 2: Yesterday (Time Out) */}
+        {/* Section 2: Last Session */}
         <DaySection
-          title="Yesterday"
+          title="Last Session"
           subtitle="End of previous working day"
           date={yesterdayDate}
           onDateChange={handleYesterdayDateChange}
@@ -168,7 +229,7 @@ Time Out: ${formatTime(yesterdayTime.hour, yesterdayTime.minute, yesterdayTime.p
         {/* Warning if Yesterday is weekend (Manual Override check) */}
         {isWeekend(yesterdayDate) && (
           <div className="bg-amber-50 text-amber-800 text-sm px-4 py-3 rounded-lg border border-amber-200">
-            <strong>Note:</strong> The selected "Yesterday" date is a weekend.
+            <strong>Note:</strong> The selected "Last Session" date is a weekend.
           </div>
         )}
       </main>
@@ -180,6 +241,16 @@ Time Out: ${formatTime(yesterdayTime.hour, yesterdayTime.minute, yesterdayTime.p
         defaultTimeIn={defaultTimeIn}
         defaultTimeOut={defaultTimeOut}
         onSave={handleSaveSettings}
+      />
+
+      {/* Email Recipients Modal */}
+      <EmailManagerModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        toEmails={toEmails}
+        setToEmails={setToEmails}
+        ccEmails={ccEmails}
+        setCcEmails={setCcEmails}
       />
 
       {/* Floating Action Button / Bottom Bar */}

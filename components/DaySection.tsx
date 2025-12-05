@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Calendar, MapPin, Clock, Building2 } from 'lucide-react';
 import { TimeSelector } from './TimeSelector';
 import { SegmentedControl } from './SegmentedControl';
@@ -34,24 +34,11 @@ export const DaySection: React.FC<DaySectionProps> = ({
   timeLabel,
   iconColor
 }) => {
-  const dateInputRef = useRef<HTMLInputElement>(null);
-
-  // Allow clicking the title text to also open the picker (mostly for Desktop/Android support)
-  const handleTitleClick = () => {
-    try {
-      if (dateInputRef.current && 'showPicker' in dateInputRef.current) {
-        (dateInputRef.current as any).showPicker();
-      }
-    } catch (e) {
-      // Ignore errors if browser doesn't support showPicker
-    }
-  };
-
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
       {/* Header */}
       <div className="bg-slate-50/50 p-4 border-b border-slate-100 flex justify-between items-center">
-        <div onClick={handleTitleClick} className="cursor-pointer">
+        <div>
           <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
             <span className={`w-2 h-8 rounded-full ${iconColor}`}></span>
             {title}
@@ -59,30 +46,26 @@ export const DaySection: React.FC<DaySectionProps> = ({
           <p className="text-xs text-slate-500 pl-4">{subtitle}</p>
         </div>
         
-        {/* Date Picker Trigger Area */}
-        <div className="relative group">
-          {/* 
-            Invisible Date Input Layer 
-            - opacity-0 makes it invisible
-            - inset-0 covers the entire parent div
-            - z-20 ensures it sits on top of the visual elements
-            - cursor-pointer ensures the hand icon appears
-          */}
-          <input
-            ref={dateInputRef}
-            type="date"
-            className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
-            value={formatISODate(date)}
-            onChange={onDateChange}
-            aria-label={`Change ${title} date`}
-            onClick={(e) => e.stopPropagation()} // Prevent bubbling issues
-          />
-          
-          {/* Visual Date Pill */}
-          <div className="flex items-center gap-2 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full group-hover:bg-blue-100 transition-colors border border-blue-100/50 relative z-10 pointer-events-none">
-            <Calendar size={14} />
-            <span>{formatDate(date)}</span>
-          </div>
+        {/* Right Side: Date Display & Native Picker Trigger */}
+        <div className="flex items-center gap-3">
+            <div className="text-sm font-medium text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+                {formatDate(date)}
+            </div>
+
+            {/* Native Calendar Trigger */}
+            <div 
+                className="relative text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-full transition-colors cursor-pointer"
+                title="Change Date"
+            >
+                <Calendar size={20} />
+                 <input
+                    type="date"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    value={formatISODate(date)}
+                    onChange={onDateChange}
+                    aria-label={`Change ${title} date`}
+                 />
+            </div>
         </div>
       </div>
 
