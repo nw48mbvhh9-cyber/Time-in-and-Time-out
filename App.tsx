@@ -14,12 +14,14 @@ import { Send, Settings, Users } from 'lucide-react';
 
 const STORAGE_KEY_IN = 'attendance_default_in_v3';
 const STORAGE_KEY_OUT = 'attendance_default_out_v3';
-const STORAGE_KEY_TO_EMAILS = 'attendance_to_emails';
-const STORAGE_KEY_CC_EMAILS = 'attendance_cc_emails';
+// Bumped version to v2 to ensure new defaults load for existing users
+const STORAGE_KEY_TO_EMAILS = 'attendance_to_emails_v2';
+const STORAGE_KEY_CC_EMAILS = 'attendance_cc_emails_v2';
 
 // Default Defaults (UAE Standard Time)
 const DEFAULT_IN_FALLBACK: TimeState = { hour: 8, minute: 30, period: 'AM' };
 const DEFAULT_OUT_FALLBACK: TimeState = { hour: 6, minute: 30, period: 'PM' };
+const DEFAULT_TO_EMAILS = ['prasad.raavi@moorejfcgroup.com'];
 
 const loadSavedTime = (key: string, fallback: TimeState): TimeState => {
   try {
@@ -30,12 +32,12 @@ const loadSavedTime = (key: string, fallback: TimeState): TimeState => {
   }
 };
 
-const loadSavedEmails = (key: string): string[] => {
+const loadSavedEmails = (key: string, defaultValue: string[] = []): string[] => {
   try {
     const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : defaultValue;
   } catch (e) {
-    return [];
+    return defaultValue;
   }
 };
 
@@ -49,7 +51,8 @@ const App: React.FC = () => {
   const [defaultTimeOut, setDefaultTimeOut] = useState<TimeState>(() => loadSavedTime(STORAGE_KEY_OUT, DEFAULT_OUT_FALLBACK));
 
   // Email Lists
-  const [toEmails, setToEmails] = useState<string[]>(() => loadSavedEmails(STORAGE_KEY_TO_EMAILS));
+  // Use DEFAULT_TO_EMAILS as fallback if storage is empty
+  const [toEmails, setToEmails] = useState<string[]>(() => loadSavedEmails(STORAGE_KEY_TO_EMAILS, DEFAULT_TO_EMAILS));
   const [ccEmails, setCcEmails] = useState<string[]>(() => loadSavedEmails(STORAGE_KEY_CC_EMAILS));
 
   // --- State for Current Session (Time In) ---
