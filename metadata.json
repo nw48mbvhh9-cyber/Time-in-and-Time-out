@@ -1,0 +1,5 @@
+{
+  "name": "TimeInOut",
+  "description": "A streamlined daily attendance reporting tool with iOS-style pickers and smart date management.",
+  "requestFramePermissions": []
+}
