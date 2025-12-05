@@ -73,7 +73,7 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
   };
 
   return (
-    <div className={`relative h-40 overflow-hidden ${width} touch-none select-none`}>
+    <div className={`relative h-40 overflow-hidden ${width} select-none`}>
         {/* Selection Highlight */}
       <div className="absolute top-1/2 left-0 w-full h-10 -mt-5 pointer-events-none z-10">
         <div className="w-full h-full border-t border-b border-blue-500/30 bg-blue-50/20 rounded-md"></div>
@@ -87,14 +87,18 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className="h-full overflow-y-scroll snap-y snap-mandatory no-scrollbar py-[60px]"
-        style={{ scrollBehavior: 'smooth' }}
+        className="h-full w-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory no-scrollbar py-[60px]"
+        style={{ 
+            scrollBehavior: 'smooth',
+            touchAction: 'pan-y', // Critical: tells browser to only handle vertical scroll gestures
+            overscrollBehaviorX: 'none' // Critical: prevents horizontal rubber-banding
+        }}
       >
         {items.map((item, index) => (
           <div
             key={`${item}-${index}`}
             ref={index === 0 ? itemRef : null}
-            className={`h-10 flex items-center justify-center snap-center text-lg transition-all duration-200 ${
+            className={`h-10 flex items-center justify-center snap-center text-lg transition-all duration-200 w-full ${
               item === value ? 'font-semibold text-slate-900 scale-110' : 'text-slate-400 scale-95'
             }`}
           >
