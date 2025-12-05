@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Trash2, Mail, Users } from 'lucide-react';
+import { X, Plus, Trash2, Users } from 'lucide-react';
 
 interface EmailManagerModalProps {
   isOpen: boolean;
